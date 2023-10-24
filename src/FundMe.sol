@@ -8,21 +8,18 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/Ag
 error FundMe__NotOwner();
 
 contract FundMe {
-    uint constant MINIMUM_USD = 5e18;
+    uint private constant MINIMUM_USD = 5e18;
     using PriceConverter for uint;
-    address public immutable i_owner;
+    address private immutable i_owner;
     AggregatorV3Interface private s_priceFeed;
 
-    address[] public funders;
-    mapping(address funder => uint amountFunded) public addressToAmountFunded;
+    address[] private s_funders;
+    mapping(address funder => uint amountFunded)
+        private s_addressToAmountFunded;
 
     constructor(address priceFeed) {
         i_owner = msg.sender;
         s_priceFeed = AggregatorV3Interface(priceFeed);
-    }
-
-    function getMinimumUSD() public pure returns (uint) {
-        return MINIMUM_USD;
     }
 
     function fund() public payable {
@@ -30,23 +27,23 @@ contract FundMe {
             msg.value.getConversionRate(s_priceFeed) >= MINIMUM_USD,
             "didn't send enough ETH"
         );
-        funders.push(msg.sender);
-        addressToAmountFunded[msg.sender] =
-            addressToAmountFunded[msg.sender] +
+        s_funders.push(msg.sender);
+        s_addressToAmountFunded[msg.sender] =
+            s_addressToAmountFunded[msg.sender] +
             msg.value;
     }
 
     function withdraw() public restricted {
         for (
             uint funderIndex = 0;
-            funderIndex < funders.length;
+            funderIndex < s_funders.length;
             funderIndex++
         ) {
-            address funder = funders[funderIndex];
-            addressToAmountFunded[funder] = 0;
+            address funder = s_funders[funderIndex];
+            s_addressToAmountFunded[funder] = 0;
         }
 
-        funders = new address[](0);
+        s_funders = new address[](0);
         // // transfer
         // payable(msg.sender).transfer(address(this).balance);
 
@@ -59,10 +56,6 @@ contract FundMe {
             value: address(this).balance
         }("");
         require(callSuccess, "Call Failed");
-    }
-
-    function getVersion() public view returns (uint) {
-        return s_priceFeed.version();
     }
 
     modifier restricted() {
@@ -79,5 +72,31 @@ contract FundMe {
 
     fallback() external payable {
         fund();
+    }
+
+    /**
+     * View / Pure functions (Getters)
+     */
+
+    function getVersion() public view returns (uint) {
+        return s_priceFeed.version();
+    }
+
+    function getOwner() public view returns (address) {
+        return i_owner;
+    }
+
+    function getMinimumUSD() public pure returns (uint) {
+        return MINIMUM_USD;
+    }
+
+    function getAddressToAmountFunded(
+        address fundingAddress
+    ) external view returns (uint) {
+        return s_addressToAmountFunded[fundingAddress];
+    }
+
+    function getFunder(uint index) external view returns (address) {
+        return s_funders[index];
     }
 }
