@@ -34,11 +34,10 @@ contract FundMe {
     }
 
     function withdraw() public restricted {
-        for (
-            uint funderIndex = 0;
-            funderIndex < s_funders.length;
-            funderIndex++
-        ) {
+        // store length for better gas
+        uint funderLength = s_funders.length;
+
+        for (uint funderIndex = 0; funderIndex < funderLength; funderIndex++) {
             address funder = s_funders[funderIndex];
             s_addressToAmountFunded[funder] = 0;
         }
